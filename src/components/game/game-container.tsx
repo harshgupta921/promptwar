@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSnakeGame } from "@/hooks/use-snake-game";
+import { useGameBackground } from "@/hooks/use-game-background";
 import { GameCanvas } from "./game-canvas";
 import { GameHUD } from "./hud";
+import { BackgroundControlPanel } from "./background-control-panel";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Play, Pause, RotateCcw, MonitorPlay, Skull, Layers, User as UserIcon, LogOut, LogIn } from "lucide-react";
+import { Play, Pause, RotateCcw, MonitorPlay, Skull, Layers, User as UserIcon, LogOut, LogIn, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 import { useRouter } from "next/navigation";
@@ -24,6 +26,10 @@ export function GameContainer() {
             return () => unsubscribe();
         }
     }, []);
+
+    // Background customization
+    const { background, updateBackground, getBackgroundStyle, getOverlayStyle } = useGameBackground();
+    const [showBackgroundPanel, setShowBackgroundPanel] = useState(false);
 
     const { gameState, startGame, pauseGame, changeDirection, setGameMode, setDifficulty, currentSpeed } = useSnakeGame({
         initialMode: "CLASSIC",
