@@ -33,43 +33,47 @@ export function GameContainer() {
         }
     });
 
-    const [narratorText, setNarratorText] = useState("System Initialized. Awaiting Input.");
+    // Audio context for sound effects
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const previousScoreRef = useRef(0);
 
-    // Speak AI Logic
-    // Speak AI Logic
-    const speak = useCallback(async (event: string) => {
-        try {
-            const res = await fetch('/api/ai/narrator', {
-                method: 'POST',
-                body: JSON.stringify({ event, score: gameState.score })
-            });
-            const data = await res.json();
-            setNarratorText(data.message);
-
-            // Ultra-futuristic TTS
-            if (typeof window !== 'undefined' && window.speechSynthesis) {
-                const utterance = new SpeechSynthesisUtterance(data.message);
-                const voices = window.speechSynthesis.getVoices();
-                // Prefer robotic or 'Google' voices
-                const roboticVoice = voices.find(v =>
-                    v.name.includes('Google US English') ||
-                    v.name.includes('Zira') ||
-                    v.name.includes('Samantha')
-                );
-                if (roboticVoice) utterance.voice = roboticVoice;
-                utterance.pitch = 0.8; // Lower pitch
-                utterance.rate = 1.1; // Faster rate
-                window.speechSynthesis.speak(utterance);
-            }
-        } catch (e) {
-            console.error("AI Narrator Error:", e);
-        }
-    }, [gameState.score]);
-
+    // Initialize audio context
     useEffect(() => {
-        if (gameState.status === "GAME_OVER") speak("game_over");
-        if (gameState.score > 0 && gameState.score % 50 === 0) speak("score_milestone");
-    }, [gameState.status, gameState.score, speak]);
+        if (typeof window !== 'undefined' && !audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+    }, []);
+
+    // Play sound when food is caught
+    const playFoodCatchSound = useCallback(() => {
+        const audioContext = audioContextRef.current;
+        if (!audioContext) return;
+
+        // Create a pleasant beep sound
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        // Sound parameters
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // High pitch
+        oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.15);
+    }, []);
+
+    // Detect when score increases (food caught)
+    useEffect(() => {
+        if (gameState.score > previousScoreRef.current && gameState.status === "PLAYING") {
+            playFoodCatchSound();
+        }
+        previousScoreRef.current = gameState.score;
+    }, [gameState.score, gameState.status, playFoodCatchSound]);
 
     // Keyboard Controls
     useEffect(() => {
@@ -123,12 +127,7 @@ export function GameContainer() {
 
                         <GameCanvas gameState={gameState} onDirectionChange={changeDirection} />
 
-                        {/* Narrator Overlay */}
-                        <div className="absolute bottom-4 left-4 right-4 text-center">
-                            <p className="font-mono text-xs text-primary/80 animate-pulse">
-                                &gt; AI_NARRATOR: {narratorText}
-                            </p>
-                        </div>
+
                     </GlassCard>
 
                     {/* Mobile Controls (Visible on small screens only) */}
