@@ -1,6 +1,6 @@
 import { GlassCard } from "@/components/ui/glass-card";
 import { GameState } from "@/types/game";
-import { Trophy, Zap, User } from "lucide-react";
+import { Trophy, Zap, User, Clock } from "lucide-react";
 import { User as FirebaseUser } from "firebase/auth";
 
 interface GameHUDProps {
@@ -27,10 +27,18 @@ export function GameHUD({ gameState, user }: GameHUDProps) {
                     <span>SCORE: {gameState.score.toString().padStart(4, '0')}</span>
                 </GlassCard>
 
-                <GlassCard className="flex items-center gap-2 px-4 py-2 bg-black/50 border-yellow-500/50 text-yellow-500 glow-text flex-1 justify-center min-h-[40px]">
-                    <Zap className="w-4 h-4 shrink-0" />
-                    <span>HIGH: {gameState.highScore.toString().padStart(4, '0')}</span>
-                </GlassCard>
+                {gameState.mode === "TIME_ATTACK" && gameState.timeRemaining !== undefined ? (
+                    <GlassCard className={`flex items-center gap-2 px-4 py-2 bg-black/50 flex-1 justify-center min-h-[40px] ${gameState.timeRemaining <= 10 ? 'border-red-500/50 text-red-500 animate-pulse' : 'border-blue-500/50 text-blue-500'
+                        } glow-text`}>
+                        <Clock className="w-4 h-4 shrink-0" />
+                        <span>TIME: {gameState.timeRemaining}s</span>
+                    </GlassCard>
+                ) : (
+                    <GlassCard className="flex items-center gap-2 px-4 py-2 bg-black/50 border-yellow-500/50 text-yellow-500 glow-text flex-1 justify-center min-h-[40px]">
+                        <Zap className="w-4 h-4 shrink-0" />
+                        <span>HIGH: {gameState.highScore.toString().padStart(4, '0')}</span>
+                    </GlassCard>
+                )}
             </div>
         </div>
     );

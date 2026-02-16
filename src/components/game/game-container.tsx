@@ -196,14 +196,14 @@ export function GameContainer() {
                                 className="w-full justify-start"
                                 onClick={() => setGameMode("CLASSIC")}
                             >
-                                CLASSIC
+                                🎮 CLASSIC
                             </Button>
                             <Button
                                 variant={gameState.mode === "AI_OBSTACLES" ? "default" : "outline"}
                                 className="w-full justify-start relative overflow-hidden"
                                 onClick={() => setGameMode("AI_OBSTACLES")}
                             >
-                                <span className="relative z-10">AI MAZE GENERATOR</span>
+                                <span className="relative z-10">🤖 AI MAZE GENERATOR</span>
                                 {gameState.mode !== "AI_OBSTACLES" && (
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-1000" />
                                 )}
@@ -213,7 +213,28 @@ export function GameContainer() {
                                 className="w-full justify-start"
                                 onClick={() => setGameMode("AI_RIVAL")}
                             >
-                                <span className="flex items-center gap-2">VS AI RIVAL <span className="bg-destructive text-[10px] px-1 rounded text-white">BETA</span></span>
+                                <span className="flex items-center gap-2">⚔️ VS AI RIVAL <span className="bg-destructive text-[10px] px-1 rounded text-white">BETA</span></span>
+                            </Button>
+                            <Button
+                                variant={gameState.mode === "SPEED_RUN" ? "default" : "outline"}
+                                className="w-full justify-start"
+                                onClick={() => setGameMode("SPEED_RUN")}
+                            >
+                                <span className="flex items-center gap-2">⚡ SPEED RUN <span className="bg-yellow-500 text-[10px] px-1 rounded text-black">NEW</span></span>
+                            </Button>
+                            <Button
+                                variant={gameState.mode === "SURVIVAL" ? "default" : "outline"}
+                                className="w-full justify-start"
+                                onClick={() => setGameMode("SURVIVAL")}
+                            >
+                                <span className="flex items-center gap-2">🛡️ SURVIVAL <span className="bg-green-500 text-[10px] px-1 rounded text-black">NEW</span></span>
+                            </Button>
+                            <Button
+                                variant={gameState.mode === "TIME_ATTACK" ? "default" : "outline"}
+                                className="w-full justify-start"
+                                onClick={() => setGameMode("TIME_ATTACK")}
+                            >
+                                <span className="flex items-center gap-2">⏱️ TIME ATTACK <span className="bg-blue-500 text-[10px] px-1 rounded text-black">NEW</span></span>
                             </Button>
                         </div>
 

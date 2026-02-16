@@ -16,23 +16,25 @@ interface UseSnakeGameProps {
     onGameOver?: (score: number) => void;
 }
 
-export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGameOver }: UseSnakeGameProps) {
+export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 200, onGameOver }: UseSnakeGameProps) {
     const [gameState, setGameState] = useState<GameState>({
         snake: INITIAL_SNAKE,
-        food: { x: 5, y: 5 }, // Initial placeholder
+        food: { x: 5, y: 5 },
         direction: INITIAL_DIRECTION,
         score: 0,
         highScore: 0,
         status: "IDLE",
         level: 1,
         obstacles: [],
-        rivalSnake: [], // Initially empty
+        rivalSnake: [],
         mode: initialMode,
+        timeRemaining: initialMode === "TIME_ATTACK" ? 60 : undefined,
     });
 
     const [speed, setSpeed] = useState(initialSpeed);
     const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
-    const directionRef = useRef<Direction>(INITIAL_DIRECTION); // Ref for immediate updates to prevent multiple turns in one tick
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const directionRef = useRef<Direction>(INITIAL_DIRECTION);
 
     // Load High Score
     useEffect(() => {
@@ -40,8 +42,32 @@ export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGa
         if (stored) setGameState((prev) => ({ ...prev, highScore: parseInt(stored) }));
     }, []);
 
+    // Time Attack Timer
+    useEffect(() => {
+        if (gameState.mode === "TIME_ATTACK" && gameState.status === "PLAYING") {
+            timerRef.current = setInterval(() => {
+                setGameState((prev) => {
+                    if (prev.timeRemaining !== undefined && prev.timeRemaining > 0) {
+                        return { ...prev, timeRemaining: prev.timeRemaining - 1 };
+                    } else if (prev.timeRemaining === 0) {
+                        // Time's up!
+                        if (onGameOver) onGameOver(prev.score);
+                        if (prev.score > prev.highScore) {
+                            localStorage.setItem("snake-highscore", prev.score.toString());
+                        }
+                        return { ...prev, status: "GAME_OVER", highScore: Math.max(prev.score, prev.highScore) };
+                    }
+                    return prev;
+                });
+            }, 1000);
+
+            return () => {
+                if (timerRef.current) clearInterval(timerRef.current);
+            };
+        }
+    }, [gameState.mode, gameState.status, onGameOver]);
+
     const startGame = useCallback(async () => {
-        // Reset State
         let obstacles: Coordinate[] = [];
 
         if (gameState.mode === "AI_OBSTACLES") {
@@ -65,7 +91,8 @@ export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGa
             direction: INITIAL_DIRECTION,
             obstacles,
             food: generateFood(INITIAL_SNAKE, obstacles),
-            rivalSnake: gameState.mode === "AI_RIVAL" ? [{ x: 15, y: 15 }, { x: 15, y: 16 }, { x: 15, y: 17 }] : undefined
+            rivalSnake: gameState.mode === "AI_RIVAL" ? [{ x: 15, y: 15 }, { x: 15, y: 16 }, { x: 15, y: 17 }] : undefined,
+            timeRemaining: gameState.mode === "TIME_ATTACK" ? 60 : undefined,
         }));
         directionRef.current = INITIAL_DIRECTION;
         setSpeed(initialSpeed);
@@ -77,13 +104,11 @@ export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGa
 
     const changeDirection = useCallback((newDirection: Direction) => {
         const current = directionRef.current;
-        // Prevent 180 turns
         if (newDirection === "UP" && current === "DOWN") return;
         if (newDirection === "DOWN" && current === "UP") return;
         if (newDirection === "LEFT" && current === "RIGHT") return;
         if (newDirection === "RIGHT" && current === "LEFT") return;
 
-        // Also update state for UI reactivity, but rely on ref for logic
         setGameState(prev => ({ ...prev, direction: newDirection }));
         directionRef.current = newDirection;
     }, []);
@@ -102,7 +127,6 @@ export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGa
                 const currentTick = prevTick + 1;
 
                 setGameState((prev) => {
-                    // Move User Snake
                     const newHead = { ...prev.snake[0] };
                     switch (directionRef.current) {
                         case "UP": newHead.y -= 1; break;
@@ -111,10 +135,7 @@ export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGa
                         case "RIGHT": newHead.x += 1; break;
                     }
 
-                    // Check Collision logic
-                    // 1. Wall or Self or Obstacle
                     if (checkCollision(newHead, prev.snake, prev.obstacles, GRID_SIZE)) {
-                        // Game Over
                         if (onGameOver) onGameOver(prev.score);
                         if (prev.score > prev.highScore) {
                             localStorage.setItem("snake-highscore", prev.score.toString());
@@ -125,11 +146,8 @@ export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGa
                     const newSnake = [newHead, ...prev.snake];
                     let ateFood = false;
 
-                    // Check Food
                     if (newHead.x === prev.food.x && newHead.y === prev.food.y) {
                         ateFood = true;
-                        // Score + Speed logic
-                        // Don't pop tail
                     } else {
                         newSnake.pop();
                     }
@@ -137,46 +155,60 @@ export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGa
                     // Rival Snake Logic
                     let newRivalSnake = prev.rivalSnake ? [...prev.rivalSnake] : undefined;
                     let rivalStatus = prev.status;
+                    let rivalAteFood = false;
 
-                    // Slow down rival: Only move every 2 ticks
-                    // We use currentTick from the setTick closure to ensure it's up to date
-                    const shouldRivalMove = currentTick % 3 !== 0; // Skip every 3rd tick? No, let's make it simpler.
-                    // The user said "too fast". Let's make it move only on EVEN ticks.
-                    const moveRival = currentTick % 2 === 0;
+                    const moveRival = currentTick % 3 === 0;
 
                     if (prev.mode === "AI_RIVAL" && newRivalSnake && moveRival) {
                         const rivalHead = newRivalSnake[0];
-                        const moveDir = getNextRivalMove(rivalHead, prev.food, [...prev.obstacles, ...prev.snake], newRivalSnake); // AI avoids player too
-                        // Move rival
+                        const moveDir = getNextRivalMove(rivalHead, prev.food, [...prev.obstacles, ...prev.snake], newRivalSnake);
+
                         const newRivalHead = { ...rivalHead };
-                        // Apply move
                         if (moveDir === "UP") newRivalHead.y--;
                         else if (moveDir === "DOWN") newRivalHead.y++;
                         else if (moveDir === "LEFT") newRivalHead.x--;
                         else if (moveDir === "RIGHT") newRivalHead.x++;
 
-                        // Collision for rival
+                        if (checkCollision(newRivalHead, newRivalSnake, prev.obstacles, GRID_SIZE)) {
+                            rivalStatus = "GAME_OVER";
+                        }
+
                         if (newRivalHead.x === newHead.x && newRivalHead.y === newHead.y) {
-                            // Head-on collision -> Game Over
                             rivalStatus = "GAME_OVER";
                         }
 
                         newRivalSnake = [newRivalHead, ...newRivalSnake];
-                        // Rival needs food too? Or just chases?
-                        // If rival eats food -> Score decreases or rival grows?
+
                         if (newRivalHead.x === prev.food.x && newRivalHead.y === prev.food.y) {
-                            // Rival ate food
-                            ateFood = true; // Food effectively gone
-                            // Regenerate food immediately next tick (handled below)
+                            rivalAteFood = true;
+                            ateFood = true;
                         } else {
                             newRivalSnake.pop();
                         }
                     }
 
                     let newFood = prev.food;
+                    let scoreIncrement = 0;
+
                     if (ateFood) {
                         newFood = generateFood(newSnake, prev.obstacles);
-                        // If rival ate it, we still generate new food elsewhere
+
+                        if (newHead.x === prev.food.x && newHead.y === prev.food.y) {
+                            scoreIncrement = prev.mode === "SPEED_RUN" ? 20 : 10;
+                        }
+                    }
+
+                    if (prev.mode === "SPEED_RUN" && prev.score > 0 && prev.score % 50 === 0 && scoreIncrement > 0) {
+                        setSpeed(s => Math.max(50, s - 10));
+                    }
+
+                    let newObstacles = prev.obstacles;
+                    if (prev.mode === "SURVIVAL" && prev.score > 0 && prev.score % 30 === 0 && scoreIncrement > 0) {
+                        const randomObstacle = {
+                            x: Math.floor(Math.random() * GRID_SIZE),
+                            y: Math.floor(Math.random() * GRID_SIZE)
+                        };
+                        newObstacles = [...prev.obstacles, randomObstacle];
                     }
 
                     return {
@@ -185,7 +217,8 @@ export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGa
                         food: newFood,
                         rivalSnake: newRivalSnake,
                         status: rivalStatus,
-                        score: ateFood && (newHead.x === prev.food.x && newHead.y === prev.food.y) ? prev.score + 10 : prev.score,
+                        obstacles: newObstacles,
+                        score: prev.score + scoreIncrement,
                     };
                 });
                 return currentTick;
@@ -198,5 +231,5 @@ export function useSnakeGame({ initialMode = "CLASSIC", initialSpeed = 150, onGa
         };
     }, [gameState.status, speed, onGameOver]);
 
-    return { gameState, startGame, pauseGame, changeDirection, setSpeed, setGameMode: (m: GameMode) => setGameState(p => ({ ...p, mode: m })) };
+    return { gameState, startGame, pauseGame, changeDirection, setSpeed, setGameMode: (m: GameMode) => setGameState(p => ({ ...p, mode: m, timeRemaining: m === "TIME_ATTACK" ? 60 : undefined })) };
 }
