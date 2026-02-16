@@ -8,6 +8,7 @@ import {
     INITIAL_SNAKE,
     INITIAL_DIRECTION,
     getNextRivalMove,
+    getAIPersonality,
 } from "@/lib/game-engine";
 import {
     calculateGameSpeed,
@@ -196,7 +197,24 @@ export function useSnakeGame({
 
                     if (prev.mode === "AI_RIVAL" && newRivalSnake && moveRival) {
                         const rivalHead = newRivalSnake[0];
-                        const moveDir = getNextRivalMove(rivalHead, prev.food, [...prev.obstacles, ...prev.snake], newRivalSnake);
+
+                        // Get AI personality based on difficulty and scores
+                        const personality = getAIPersonality(
+                            prev.difficulty,
+                            prev.score,
+                            newRivalSnake.length * 10 // Estimate rival score
+                        );
+
+                        // Enhanced AI with personality and player awareness
+                        const moveDir = getNextRivalMove(
+                            rivalHead,
+                            prev.food,
+                            [...prev.obstacles, ...prev.snake],
+                            newRivalSnake,
+                            GRID_SIZE,
+                            personality,
+                            prev.snake // Pass player snake for awareness
+                        );
 
                         const newRivalHead = { ...rivalHead };
                         if (moveDir === "UP") newRivalHead.y--;
