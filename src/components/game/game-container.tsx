@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSnakeGame } from "@/hooks/use-snake-game";
 import { GameCanvas } from "./game-canvas";
 import { GameHUD } from "./hud";
