@@ -25,12 +25,11 @@ export function GameContainer() {
         }
     }, []);
 
-    const { gameState, startGame, pauseGame, changeDirection, setGameMode, setSpeed } = useSnakeGame({
+    const { gameState, startGame, pauseGame, changeDirection, setGameMode, setDifficulty, currentSpeed } = useSnakeGame({
         initialMode: "CLASSIC",
-        initialSpeed: 100,
+        initialDifficulty: "EASY",
         onGameOver: (score) => {
-            // Trigger Game Over Sequence
-            if (score > 50) confetti(); // Celebration
+            if (score > 50) confetti();
         }
     });
 
@@ -241,9 +240,33 @@ export function GameContainer() {
                         <div className="mt-auto border-t border-white/10 pt-4">
                             <p className="text-xs text-muted-foreground mb-2 font-mono">DIFFICULTY</p>
                             <div className="flex gap-2">
-                                <Button size="sm" variant={gameState.level === 1 ? "secondary" : "ghost"} onClick={() => setSpeed(150)} className="flex-1">EASY</Button>
-                                <Button size="sm" variant={gameState.level === 2 ? "secondary" : "ghost"} onClick={() => setSpeed(100)} className="flex-1">MED</Button>
-                                <Button size="sm" variant={gameState.level === 3 ? "secondary" : "ghost"} onClick={() => setSpeed(60)} className="flex-1">HARD</Button>
+                                <Button
+                                    size="sm"
+                                    variant={gameState.difficulty === "EASY" ? "secondary" : "ghost"}
+                                    onClick={() => setDifficulty("EASY")}
+                                    className="flex-1"
+                                >
+                                    EASY
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={gameState.difficulty === "MEDIUM" ? "secondary" : "ghost"}
+                                    onClick={() => setDifficulty("MEDIUM")}
+                                    className="flex-1"
+                                >
+                                    MED
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant={gameState.difficulty === "HARD" ? "secondary" : "ghost"}
+                                    onClick={() => setDifficulty("HARD")}
+                                    className="flex-1"
+                                >
+                                    HARD
+                                </Button>
+                            </div>
+                            <div className="mt-2 text-[10px] text-center text-muted-foreground font-mono">
+                                Speed: {currentSpeed}ms | Level: {gameState.level}
                             </div>
                         </div>
                     </GlassCard>

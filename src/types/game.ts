@@ -9,6 +9,8 @@ export type GameStatus = "IDLE" | "PLAYING" | "PAUSED" | "GAME_OVER";
 
 export type GameMode = "CLASSIC" | "AI_OBSTACLES" | "AI_RIVAL" | "ENDLESS" | "SPEED_RUN" | "SURVIVAL" | "TIME_ATTACK";
 
+export type DifficultyLevel = "EASY" | "MEDIUM" | "HARD" | "HARDCORE";
+
 export interface GameState {
     snake: Coordinate[];
     food: Coordinate;
@@ -20,5 +22,6 @@ export interface GameState {
     obstacles: Coordinate[];
     rivalSnake?: Coordinate[];
     mode: GameMode;
+    difficulty: DifficultyLevel;
     timeRemaining?: number; // For TIME_ATTACK mode
 }
